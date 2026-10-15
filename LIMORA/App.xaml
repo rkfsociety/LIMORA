@@ -1,0 +1,11 @@
+<Application x:Class="LIMORA.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+  <Application.Resources>
+    <SolidColorBrush x:Key="PanelBrush" Color="#EE1B1B1E" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#66777780" />
+    <SolidColorBrush x:Key="TextBrush" Color="#FFF2F2F3" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#FFA9A9B0" />
+  </Application.Resources>
+</Application>

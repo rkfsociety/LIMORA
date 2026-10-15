@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\limora.ico</ApplicationIcon>
+    <AssemblyName>LIMORA</AssemblyName>
+    <RootNamespace>LIMORA</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>LIMORA</Authors>
+    <Description>Lightweight Codex Desktop rate-limit overlay for Windows.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\limora.ico" />
+  </ItemGroup>
+</Project>
