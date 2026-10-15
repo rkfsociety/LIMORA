@@ -117,7 +117,7 @@ static void PositionsByComposer()
     var result = OverlayPositionCalculator.Calculate(
         new Rectangle(100, 50, 1200, 900), new Size(240, 40), 96, settings,
         new Rectangle(200, 700, 900, 180));
-    Equal(new Point(860, 652), result);
+    Equal(new Point(1048, 770), result);
 }
 
 static void ClampsNarrowWindow()

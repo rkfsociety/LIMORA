@@ -14,8 +14,8 @@ public static class OverlayPositionCalculator
         {
             var minX = window.Left + Math.Min(12, Math.Max(0, (window.Width - overlay.Width) / 2));
             var maxX = Math.Max(minX, window.Right - overlay.Width - 12);
-            x = Math.Clamp(found.Right - overlay.Width, minX, maxX);
-            y = found.Top - overlay.Height - 8;
+            x = Math.Clamp(found.Right + 8, minX, maxX);
+            y = found.Top + (found.Height - overlay.Height) / 2;
         }
         else
         {
