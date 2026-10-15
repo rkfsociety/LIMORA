@@ -1,0 +1,40 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run tests and publish the application
+        shell: pwsh
+        run: .\build.ps1
+
+      - name: Upload Windows executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: LIMORA-win-x64
+          path: dist/LIMORA.exe
+          if-no-files-found: error
+          retention-days: 14
