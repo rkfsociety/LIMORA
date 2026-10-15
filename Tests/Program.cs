@@ -16,6 +16,7 @@ var tests = new (string Name, Action Run)[]
     ("finds windows across additional limit IDs", ParsesMultipleLimitIds),
     ("formats reset times", FormatsResetTime),
     ("unavailable snapshot is restored when Codex returns online", RestoresOnlineStateAfterUnavailableSnapshot),
+    ("missing Codex CLI reports unavailable limits", MissingCodexCliReportsUnavailable),
     ("round-trips settings", RoundTripsSettings),
     ("positions relative to the Codex window", PositionsRelativeToWindow),
     ("positions above the detected composer", PositionsByComposer),
@@ -75,6 +76,16 @@ static void RestoresOnlineStateAfterUnavailableSnapshot()
     var snapshot = RateLimitParser.Parse("""{"rateLimits":{"primary":{"usedPercent":27,"windowDurationMins":300}}}""")!;
     viewModel.SetSnapshot(snapshot);
     True(viewModel.Text.Contains("73%", StringComparison.Ordinal), "A successful snapshot should replace the unavailable state.");
+}
+
+static void MissingCodexCliReportsUnavailable()
+{
+    var viewModel = new OverlayViewModel(new AppSettings());
+    viewModel.SetCodexOnline(true);
+    using var provider = new CodexAppServerRateLimitProvider(null, new LocalLogger());
+    provider.SnapshotChanged += viewModel.SetSnapshot;
+    provider.RefreshAsync().GetAwaiter().GetResult();
+    Equal("Limits unavailable", viewModel.Text);
 }
 
 static void RoundTripsSettings()

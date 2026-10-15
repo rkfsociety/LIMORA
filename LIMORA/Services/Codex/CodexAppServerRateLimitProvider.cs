@@ -18,7 +18,14 @@ public sealed class CodexAppServerRateLimitProvider(string? executablePath, Loca
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
-        if (executablePath is null || _disposed) return;
+        if (_disposed) return;
+        if (executablePath is null)
+        {
+            logger.Write("warning", "codex_cli_not_found", "No compatible local Codex CLI executable was found.");
+            _hasCurrentSnapshot = false;
+            SnapshotChanged?.Invoke(null);
+            return;
+        }
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {

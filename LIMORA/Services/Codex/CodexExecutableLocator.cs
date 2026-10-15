@@ -6,6 +6,9 @@ public static class CodexExecutableLocator
 {
     public static string? Find()
     {
+        var userInstalled = FindUserInstalledCli();
+        if (userInstalled is not null) return userInstalled;
+
         var packaged = FindPackagedDesktopCli();
         if (packaged is not null) return packaged;
 
@@ -17,6 +20,24 @@ public static class CodexExecutableLocator
         }
 
         return null;
+    }
+
+    private static string? FindUserInstalledCli()
+    {
+        try
+        {
+            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenAI", "Codex", "bin");
+            if (!Directory.Exists(root)) return null;
+
+            return Directory.EnumerateDirectories(root)
+                .OrderByDescending(Directory.GetLastWriteTimeUtc)
+                .Select(path => Path.Combine(path, OperatingSystem.IsWindows() ? "codex.exe" : "codex"))
+                .FirstOrDefault(File.Exists);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
     }
 
     private static string? FindPackagedDesktopCli()
