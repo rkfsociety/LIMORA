@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Threading;
 using System.Windows;
 using LIMORA.Infrastructure;
@@ -11,6 +12,8 @@ namespace LIMORA.App;
 
 public partial class App : System.Windows.Application
 {
+    private const string InstanceMutexName = "Local\\LIMORA";
+    private const string AppDataRelaunchArgument = "--appdata-relaunch";
     private Mutex? _mutex;
     private AppServices? _services;
     private bool _ownsMutex;
@@ -18,15 +21,29 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        _mutex = new Mutex(initiallyOwned: true, "Local\\LIMORA", out var created);
+        _mutex = new Mutex(initiallyOwned: true, InstanceMutexName, out var created);
         _ownsMutex = created;
-        if (!created)
+        if (!created && e.Args.Contains(AppDataRelaunchArgument, StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                _ownsMutex = _mutex.WaitOne(TimeSpan.FromSeconds(15));
+            }
+            catch (AbandonedMutexException)
+            {
+                _ownsMutex = true;
+            }
+        }
+
+        if (!_ownsMutex)
         {
             Shutdown();
             return;
         }
 
         var logger = new LocalLogger();
+        if (TryRelaunchFromAppData(e, logger)) return;
+
         var settingsService = new SettingsService(logger);
         var settings = settingsService.Load();
         var executable = CodexExecutableLocator.Find();
@@ -65,5 +82,77 @@ public partial class App : System.Windows.Application
         if (_ownsMutex) _mutex?.ReleaseMutex();
         _mutex?.Dispose();
         base.OnExit(e);
+    }
+
+    private bool TryRelaunchFromAppData(StartupEventArgs e, LocalLogger logger)
+    {
+        var executablePath = Environment.ProcessPath;
+#pragma warning disable IL3000 // Empty Assembly.Location identifies the published single-file executable.
+        var isSingleFile = string.IsNullOrEmpty(typeof(App).Assembly.Location);
+#pragma warning restore IL3000
+        if (string.IsNullOrWhiteSpace(executablePath) ||
+            !string.Equals(Path.GetFileName(executablePath), "LIMORA.exe", StringComparison.OrdinalIgnoreCase) ||
+            !isSingleFile)
+            return false;
+
+        var installDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LIMORA");
+        var installedPath = Path.Combine(installDirectory, "LIMORA.exe");
+        if (string.Equals(Path.GetFullPath(executablePath), Path.GetFullPath(installedPath), StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        string? stagedPath = null;
+        try
+        {
+            Directory.CreateDirectory(installDirectory);
+
+            var sourceVersion = typeof(App).Assembly.GetName().Version ?? new Version(0, 0);
+            var installedVersion = File.Exists(installedPath) &&
+                                   Version.TryParse(FileVersionInfo.GetVersionInfo(installedPath).FileVersion, out var parsedVersion)
+                ? parsedVersion
+                : new Version(0, 0);
+
+            if (installedVersion < sourceVersion)
+            {
+                stagedPath = Path.Combine(installDirectory, $"LIMORA-{Guid.NewGuid():N}.tmp");
+                File.Copy(executablePath, stagedPath);
+                File.Move(stagedPath, installedPath, overwrite: true);
+                stagedPath = null;
+            }
+
+            var startInfo = new ProcessStartInfo(installedPath)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = installDirectory
+            };
+            if (e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase))
+                startInfo.ArgumentList.Add("--startup");
+            startInfo.ArgumentList.Add(AppDataRelaunchArgument);
+
+            using var relaunched = Process.Start(startInfo);
+            if (relaunched is null)
+                throw new InvalidOperationException("Could not start LIMORA from its AppData installation.");
+
+            _mutex!.ReleaseMutex();
+            _ownsMutex = false;
+            Shutdown();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (stagedPath is not null)
+            {
+                try { File.Delete(stagedPath); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+
+            logger.Write("error", "appdata_install_failed", ex.GetType().Name);
+            System.Windows.MessageBox.Show(
+                $"LIMORA could not copy itself to {installDirectory}. This launch will continue from its current location.",
+                "LIMORA installation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
     }
 }
