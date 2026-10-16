@@ -15,6 +15,7 @@ var tests = new (string Name, Action Run)[]
     ("parses primary and secondary buckets", ParsesPrimaryAndSecondary),
     ("finds windows across additional limit IDs", ParsesMultipleLimitIds),
     ("formats reset times", FormatsResetTime),
+    ("formats absolute reset time in local timezone", FormatsAbsoluteResetTime),
     ("unavailable snapshot is restored when Codex returns online", RestoresOnlineStateAfterUnavailableSnapshot),
     ("missing Codex CLI reports unavailable limits", MissingCodexCliReportsUnavailable),
     ("round-trips settings", RoundTripsSettings),
@@ -64,6 +65,12 @@ static void FormatsResetTime()
     Equal("2h 14m", OverlayViewModel.FormatRemaining(now.AddHours(2).AddMinutes(14), now));
     Equal("3d 8h", OverlayViewModel.FormatRemaining(now.AddDays(3).AddHours(8), now));
     Equal("now", OverlayViewModel.FormatRemaining(now.AddSeconds(-1), now));
+}
+
+static void FormatsAbsoluteResetTime()
+{
+    var resetAt = new DateTimeOffset(2026, 10, 16, 11, 30, 0, TimeSpan.Zero);
+    Equal(resetAt.ToLocalTime().ToString("dd.MM HH:mm"), OverlayViewModel.FormatResetTime(resetAt));
 }
 
 static void RestoresOnlineStateAfterUnavailableSnapshot()

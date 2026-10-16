@@ -63,7 +63,7 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
         {
             DisplayMode.Bars => string.Join("   ", windows.Select(window => $"{ShortLabel(window.Label)} {MakeBar(window.RemainingPercent)} {window.RemainingPercent}%")),
             DisplayMode.Detailed when _settings.ShowResetTime => string.Join("    ", windows.Select(window =>
-                $"{window.Label} {window.RemainingPercent}%" + (window.ResetsAt is { } reset ? $" · reset {FormatRemaining(reset)}" : string.Empty))),
+                $"{window.Label} {window.RemainingPercent}%" + (window.ResetsAt is { } reset ? $" · reset {FormatResetTime(reset)}" : string.Empty))),
             _ => string.Join("  ·  ", windows.Select(window => $"{window.Label} {window.RemainingPercent}%"))
         };
 
@@ -76,7 +76,7 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
         Foreground = new SolidColorBrush(color);
         var plan = string.IsNullOrWhiteSpace(_snapshot.PlanType) ? "" : $"Plan: {_snapshot.PlanType}. ";
         Tooltip = plan + string.Join("; ", windows.Select(window =>
-            $"{window.Label}: {window.RemainingPercent}% remaining" + (window.ResetsAt is { } reset ? $", resets in {FormatRemaining(reset)}" : "")));
+            $"{window.Label}: {window.RemainingPercent}% remaining" + (window.ResetsAt is { } reset ? $", resets at {FormatResetTime(reset)}" : "")));
         if (_snapshot.ResetCreditsAvailable is int credits)
             Tooltip += $". Reset credits: {credits}.";
         if (_snapshot.OrdinaryUsageAllowed is false)
@@ -104,6 +104,8 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
         if (remaining.TotalHours >= 1) return $"{(int)remaining.TotalHours}h {remaining.Minutes:D2}m";
         return $"{Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes))}m";
     }
+
+    public static string FormatResetTime(DateTimeOffset resetAt) => resetAt.ToLocalTime().ToString("dd.MM HH:mm");
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

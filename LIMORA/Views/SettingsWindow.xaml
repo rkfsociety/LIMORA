@@ -246,7 +246,7 @@
               </Grid>
             </Grid>
             <CheckBox x:Name="ShowOverlayBox" Content="Show overlay beside Codex" Margin="0,12,0,0"/>
-            <CheckBox x:Name="ShowResetTimeBox" Content="Show reset countdown in Detailed mode"/>
+            <CheckBox x:Name="ShowResetTimeBox" Content="Show reset time in Detailed mode"/>
           </StackPanel>
         </Border>
 
