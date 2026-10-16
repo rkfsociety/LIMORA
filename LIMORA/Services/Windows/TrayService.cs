@@ -11,6 +11,7 @@ public sealed class TrayService : IDisposable
     private readonly Forms.ToolStripMenuItem _showOverlayItem;
     private readonly Forms.ToolStripMenuItem _startWithWindowsItem;
     private readonly Forms.ToolStripMenuItem _calibrateItem;
+    private readonly Forms.ToolStripMenuItem _checkForUpdatesItem;
     private readonly Forms.ToolStripMenuItem _automaticPositionItem;
     private readonly Dictionary<DisplayMode, Forms.ToolStripMenuItem> _displayItems = [];
     private readonly Dictionary<OverlayAnchor, Forms.ToolStripMenuItem> _anchorItems = [];
@@ -51,6 +52,8 @@ public sealed class TrayService : IDisposable
         refreshItem.Click += (_, _) => _services.RefreshNow();
         var settingsItem = new Forms.ToolStripMenuItem("Settings…");
         settingsItem.Click += (_, _) => _services.ShowSettings();
+        _checkForUpdatesItem = new Forms.ToolStripMenuItem("Check for updates");
+        _checkForUpdatesItem.Click += CheckForUpdates;
         _startWithWindowsItem = new Forms.ToolStripMenuItem("Start with Windows") { CheckOnClick = true };
         _startWithWindowsItem.Click += (_, _) => _services.SetStartWithWindows(_startWithWindowsItem.Checked);
         var exitItem = new Forms.ToolStripMenuItem("Exit");
@@ -65,6 +68,7 @@ public sealed class TrayService : IDisposable
         _menu.Items.Add(_calibrateItem);
         _menu.Items.Add(refreshItem);
         _menu.Items.Add(settingsItem);
+        _menu.Items.Add(_checkForUpdatesItem);
         _menu.Items.Add(_startWithWindowsItem);
         _menu.Items.Add(new Forms.ToolStripSeparator());
         _menu.Items.Add(exitItem);
@@ -105,6 +109,24 @@ public sealed class TrayService : IDisposable
     public void SetStatus(string text)
     {
         _icon.Text = text.Length > 63 ? text[..63] : text;
+    }
+
+    public void ShowBalloonTip(string title, string text) =>
+        _icon.ShowBalloonTip(5000, title, text, Forms.ToolTipIcon.Info);
+
+    private async void CheckForUpdates(object? sender, EventArgs e)
+    {
+        _checkForUpdatesItem.Enabled = false;
+        _checkForUpdatesItem.Text = "Checking for updates…";
+        try
+        {
+            await _services.CheckForUpdatesAsync();
+        }
+        finally
+        {
+            _checkForUpdatesItem.Text = "Check for updates";
+            _checkForUpdatesItem.Enabled = true;
+        }
     }
 
     public void Dispose()

@@ -4,6 +4,7 @@ using LIMORA.Infrastructure;
 using LIMORA.Models;
 using LIMORA.Services.Codex;
 using LIMORA.Services.Settings;
+using LIMORA.Services.Updates;
 using LIMORA.ViewModels;
 using LIMORA.Views;
 using DipPoint = System.Windows.Point;
@@ -18,6 +19,7 @@ public sealed class AppServices : IDisposable
     private readonly OverlayViewModel _viewModel;
     private readonly OverlayWindow _overlay;
     private readonly LocalLogger _logger;
+    private readonly UpdateService _updateService = new();
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _notificationTimer;
     private readonly DispatcherTimer _countdownTimer;
@@ -174,6 +176,52 @@ public sealed class AppServices : IDisposable
     }
 
     public void RefreshNow() => _ = RefreshAsync();
+
+    public async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            var update = await _updateService.FindAvailableUpdateAsync();
+            if (update is null)
+            {
+                System.Windows.MessageBox.Show(
+                    $"LIMORA is up to date (v{_updateService.CurrentVersion.ToString(3)}).",
+                    "LIMORA updates", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                return;
+            }
+
+            var executablePath = Environment.ProcessPath;
+            if (executablePath is null || !string.Equals(Path.GetFileName(executablePath), "LIMORA.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                System.Windows.MessageBox.Show(
+                    "Updates can only be installed from the published LIMORA.exe application.",
+                    "LIMORA updates", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            var sizeInMegabytes = Math.Ceiling(update.Size / (1024d * 1024d));
+            var answer = System.Windows.MessageBox.Show(
+                $"LIMORA v{update.Version.ToString(3)} is available ({sizeInMegabytes:N0} MB). Download and install it now? LIMORA will restart when the download is verified.",
+                "LIMORA update available", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.No);
+            if (answer != System.Windows.MessageBoxResult.Yes) return;
+
+            Tray?.ShowBalloonTip("LIMORA update", "Downloading and verifying the update. LIMORA will restart when it is ready.");
+            var stagedPath = await _updateService.DownloadAndStageAsync(update, executablePath);
+            _logger.Write("info", "update_download_verified", $"Verified LIMORA {update.Version.ToString(3)}.");
+            _updateService.StartInstallAfterExit(stagedPath, executablePath, Environment.ProcessId);
+            _logger.Write("info", "update_install_started", $"Installing LIMORA {update.Version.ToString(3)} after shutdown.");
+            System.Windows.Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            if (System.Windows.Application.Current.Dispatcher.HasShutdownStarted) return;
+            _logger.Write("error", "update_failed", ex.GetType().Name);
+            System.Windows.MessageBox.Show(
+                "LIMORA could not check or install the update. Check your internet connection, disk space, and write access to the LIMORA folder, then try again.",
+                "LIMORA update", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
 
     public void BeginCalibration()
     {
@@ -354,6 +402,7 @@ public sealed class AppServices : IDisposable
         _provider.UpdatedNotification -= OnRateLimitNotification;
         _tracker.StateChanged -= OnWindowStateChanged;
         Tray?.Dispose();
+        _updateService.Dispose();
         _provider.Dispose();
         _tracker.Dispose();
     }

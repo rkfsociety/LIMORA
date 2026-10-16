@@ -10,7 +10,7 @@
     <ApplicationIcon>Assets\limora.ico</ApplicationIcon>
     <AssemblyName>LIMORA</AssemblyName>
     <RootNamespace>LIMORA</RootNamespace>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <Authors>LIMORA</Authors>
     <Description>Lightweight Codex Desktop rate-limit overlay for Windows.</Description>
   </PropertyGroup>
