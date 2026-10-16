@@ -1,11 +1,19 @@
 using System.Globalization;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Interop;
 using LIMORA.Models;
 
 namespace LIMORA.Views;
 
 public partial class SettingsWindow : Window
 {
+    private const int DwmwaUseImmersiveDarkMode = 20;
+    private const int DwmwaBorderColor = 34;
+    private const int DwmwaCaptionColor = 35;
+    private const int DwmwaTextColor = 36;
+
     private readonly AppSettings _settings;
 
     public SettingsWindow(AppSettings settings)
@@ -30,6 +38,12 @@ public partial class SettingsWindow : Window
         SetManualFieldsEnabled(!_settings.AutomaticPosition);
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        ApplyTitleBarTheme();
+    }
+
     public event Action<AppSettings>? SettingsSaved;
 
     private void SetManualFieldsEnabled(bool enabled)
@@ -37,6 +51,25 @@ public partial class SettingsWindow : Window
         AnchorBox.IsEnabled = enabled;
         OffsetXBox.IsEnabled = enabled;
         OffsetYBox.IsEnabled = enabled;
+    }
+
+    private void ApplyTitleBarTheme()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        SetDwmAttribute(handle, DwmwaUseImmersiveDarkMode, 1);
+        SetDwmAttribute(handle, DwmwaCaptionColor, ToColorRef(0x18, 0x19, 0x1D));
+        SetDwmAttribute(handle, DwmwaTextColor, ToColorRef(0xF1, 0xF2, 0xF4));
+        SetDwmAttribute(handle, DwmwaBorderColor, ToColorRef(0x35, 0x38, 0x40));
+    }
+
+    private static int ToColorRef(byte red, byte green, byte blue) =>
+        red | (green << 8) | (blue << 16);
+
+    private static void SetDwmAttribute(nint handle, int attribute, int value)
+    {
+        var result = DwmSetWindowAttribute(handle, attribute, ref value, sizeof(int));
+        if (result < 0)
+            Debug.WriteLine($"DwmSetWindowAttribute({attribute}) failed with HRESULT 0x{result:X8}.");
     }
 
     private void OnSave(object sender, RoutedEventArgs e)
@@ -88,4 +121,7 @@ public partial class SettingsWindow : Window
         WarningThreshold = settings.WarningThreshold,
         CriticalThreshold = settings.CriticalThreshold
     };
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int valueSize);
 }
