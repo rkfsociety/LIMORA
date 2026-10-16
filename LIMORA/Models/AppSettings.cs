@@ -14,7 +14,7 @@ public sealed class AppSettings
     public double OffsetX { get; set; }
     public double OffsetY { get; set; } = -100;
     public int RefreshIntervalSeconds { get; set; } = 45;
-    public bool StartWithWindows { get; set; }
+    public bool StartWithWindows { get; set; } = true;
     public int WarningThreshold { get; set; } = 50;
     public int CriticalThreshold { get; set; } = 20;
 

@@ -24,6 +24,7 @@ public sealed class AppServices : IDisposable
     private readonly DispatcherTimer _notificationTimer;
     private readonly DispatcherTimer _countdownTimer;
     private readonly DispatcherTimer _composerRetryTimer;
+    private readonly DispatcherTimer? _codexExitTimer;
     private TargetWindowState? _latestState;
     private Rectangle? _composerRelative;
     private System.Drawing.Size _lastWindowSize;
@@ -36,7 +37,7 @@ public sealed class AppServices : IDisposable
 
     public AppServices(SettingsService settingsService, AppSettings settings,
         CodexAppServerRateLimitProvider provider, CodexWindowTracker tracker,
-        OverlayViewModel viewModel, OverlayWindow overlay, LocalLogger logger)
+        OverlayViewModel viewModel, OverlayWindow overlay, LocalLogger logger, bool exitWhenCodexCloses)
     {
         _settingsService = settingsService;
         Settings = settings;
@@ -58,6 +59,15 @@ public sealed class AppServices : IDisposable
             _composerRetryTimer.Stop();
             if (!_composerSearchCompleted && IsTargetVisible && _composerRetries < 3) _ = SearchForComposerAsync(_latestState!, _positionRevision);
         };
+        if (exitWhenCodexCloses)
+        {
+            _codexExitTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(2) };
+            _codexExitTimer.Tick += (_, _) =>
+            {
+                _codexExitTimer.Stop();
+                if (_tracker.CurrentState is null) System.Windows.Application.Current.Shutdown();
+            };
+        }
 
         _provider.SnapshotChanged += OnSnapshotChanged;
         _provider.UpdatedNotification += OnRateLimitNotification;
@@ -79,6 +89,8 @@ public sealed class AppServices : IDisposable
     public void OnWindowStateChanged(TargetWindowState? state)
     {
         if (_disposed) return;
+        if (state is null) _codexExitTimer?.Start();
+        else _codexExitTimer?.Stop();
         if (state is null || state.IsMinimized)
         {
             _latestState = state;
@@ -398,6 +410,7 @@ public sealed class AppServices : IDisposable
         _notificationTimer.Stop();
         _countdownTimer.Stop();
         _composerRetryTimer.Stop();
+        _codexExitTimer?.Stop();
         _provider.SnapshotChanged -= OnSnapshotChanged;
         _provider.UpdatedNotification -= OnRateLimitNotification;
         _tracker.StateChanged -= OnWindowStateChanged;

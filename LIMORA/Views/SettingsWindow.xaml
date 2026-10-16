@@ -303,7 +303,7 @@
                 BorderThickness="1" CornerRadius="8" Padding="18" Margin="0">
           <StackPanel>
             <TextBlock Text="Startup" Style="{StaticResource SectionTitleStyle}"/>
-            <CheckBox x:Name="StartWithWindowsBox" Content="Start LIMORA with Windows (current user only)" Margin="0"/>
+            <CheckBox x:Name="StartWithWindowsBox" Content="Monitor for Codex when Windows starts (current user only)" Margin="0"/>
           </StackPanel>
         </Border>
       </StackPanel>

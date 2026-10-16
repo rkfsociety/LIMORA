@@ -53,7 +53,7 @@ public sealed class SettingsService(LocalLogger logger)
             return;
         }
 
-        runKey.SetValue("LIMORA", $"\"{executablePath}\" --startup", RegistryValueKind.String);
+        runKey.SetValue("LIMORA", $"\"{executablePath}\" --watcher", RegistryValueKind.String);
     }
 }
 
