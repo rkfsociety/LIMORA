@@ -16,6 +16,7 @@ var tests = new (string Name, Action Run)[]
     ("finds windows across additional limit IDs", ParsesMultipleLimitIds),
     ("formats reset times", FormatsResetTime),
     ("formats absolute reset time in local timezone", FormatsAbsoluteResetTime),
+    ("omits rate window labels and shows concise reset dates", OmitsRateWindowLabels),
     ("unavailable snapshot is restored when Codex returns online", RestoresOnlineStateAfterUnavailableSnapshot),
     ("missing Codex CLI reports unavailable limits", MissingCodexCliReportsUnavailable),
     ("round-trips settings", RoundTripsSettings),
@@ -70,7 +71,25 @@ static void FormatsResetTime()
 static void FormatsAbsoluteResetTime()
 {
     var resetAt = new DateTimeOffset(2026, 10, 16, 11, 30, 0, TimeSpan.Zero);
-    Equal(resetAt.ToLocalTime().ToString("dd.MM HH:mm"), OverlayViewModel.FormatResetTime(resetAt));
+    Equal(resetAt.ToLocalTime().ToString("HH:mm"), OverlayViewModel.FormatResetTime(resetAt, 300));
+    Equal(resetAt.ToLocalTime().ToString("dd.MM HH:mm"), OverlayViewModel.FormatResetTime(resetAt, 10_080));
+}
+
+static void OmitsRateWindowLabels()
+{
+    var resetAt = new DateTimeOffset(2026, 10, 16, 11, 30, 0, TimeSpan.Zero);
+    var viewModel = new OverlayViewModel(new AppSettings { DisplayMode = DisplayMode.Detailed });
+    viewModel.SetSnapshot(new LimitSnapshot(
+        [
+            new LimitWindow("5h", 82, resetAt, 300),
+            new LimitWindow("Week", 35, resetAt.AddDays(4), 10_080)
+        ], null, null, null, null, null, DateTimeOffset.Now));
+    True(!viewModel.Text.Contains("5h", StringComparison.Ordinal) && !viewModel.Text.Contains("Week", StringComparison.Ordinal),
+        "The overlay should identify the windows by order rather than labels.");
+    True(viewModel.Text.Contains($"82% · {OverlayViewModel.FormatResetTime(resetAt, 300)}", StringComparison.Ordinal),
+        "The five-hour window should show only the reset time.");
+    True(viewModel.Text.Contains($"35% · {OverlayViewModel.FormatResetTime(resetAt.AddDays(4), 10_080)}", StringComparison.Ordinal),
+        "The weekly window should show the reset date and time.");
 }
 
 static void RestoresOnlineStateAfterUnavailableSnapshot()

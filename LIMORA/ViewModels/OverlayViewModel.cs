@@ -61,10 +61,10 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
         var windows = _snapshot.Windows;
         Text = _settings.DisplayMode switch
         {
-            DisplayMode.Bars => string.Join("   ", windows.Select(window => $"{ShortLabel(window.Label)} {MakeBar(window.RemainingPercent)} {window.RemainingPercent}%")),
+            DisplayMode.Bars => string.Join("   ", windows.Select(window => $"{MakeBar(window.RemainingPercent)} {window.RemainingPercent}%")),
             DisplayMode.Detailed when _settings.ShowResetTime => string.Join("    ", windows.Select(window =>
-                $"{window.Label} {window.RemainingPercent}%" + (window.ResetsAt is { } reset ? $" · reset {FormatResetTime(reset)}" : string.Empty))),
-            _ => string.Join("  ·  ", windows.Select(window => $"{window.Label} {window.RemainingPercent}%"))
+                $"{window.RemainingPercent}%" + (window.ResetsAt is { } reset ? $" · {FormatResetTime(reset, window.DurationMinutes)}" : string.Empty))),
+            _ => string.Join("  ·  ", windows.Select(window => $"{window.RemainingPercent}%"))
         };
 
         var lowest = windows.Min(window => window.RemainingPercent);
@@ -76,7 +76,7 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
         Foreground = new SolidColorBrush(color);
         var plan = string.IsNullOrWhiteSpace(_snapshot.PlanType) ? "" : $"Plan: {_snapshot.PlanType}. ";
         Tooltip = plan + string.Join("; ", windows.Select(window =>
-            $"{window.Label}: {window.RemainingPercent}% remaining" + (window.ResetsAt is { } reset ? $", resets at {FormatResetTime(reset)}" : "")));
+            $"{window.Label}: {window.RemainingPercent}% remaining" + (window.ResetsAt is { } reset ? $", resets at {FormatResetTime(reset, window.DurationMinutes)}" : "")));
         if (_snapshot.ResetCreditsAvailable is int credits)
             Tooltip += $". Reset credits: {credits}.";
         if (_snapshot.OrdinaryUsageAllowed is false)
@@ -86,8 +86,6 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
         if (_snapshot.RateLimitReachedType is { } reached)
             Tooltip += $" Rate-limit state: {reached}.";
     }
-
-    private static string ShortLabel(string label) => label.Equals("Week", StringComparison.OrdinalIgnoreCase) ? "W" : label;
 
     private static string MakeBar(int remaining)
     {
@@ -105,7 +103,8 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
         return $"{Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes))}m";
     }
 
-    public static string FormatResetTime(DateTimeOffset resetAt) => resetAt.ToLocalTime().ToString("dd.MM HH:mm");
+    public static string FormatResetTime(DateTimeOffset resetAt, long? durationMinutes) =>
+        resetAt.ToLocalTime().ToString(durationMinutes == 300 ? "HH:mm" : "dd.MM HH:mm");
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
