@@ -15,6 +15,7 @@ public sealed class CodexWindowTracker : IDisposable
     private readonly List<nint> _hooks = [];
     private readonly WindowsNative.WinEventProc _callback;
     private readonly DispatcherTimer _coalesceTimer;
+    private readonly DispatcherTimer _discoveryTimer;
     private nint _target;
     private nint _overlay;
     private bool _disposed;
@@ -32,6 +33,11 @@ public sealed class CodexWindowTracker : IDisposable
             _coalesceTimer.Stop();
             PublishCurrentState();
         };
+        _discoveryTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _discoveryTimer.Tick += (_, _) => DiscoverTarget();
     }
 
     public event Action<TargetWindowState?>? StateChanged;
@@ -50,6 +56,7 @@ public sealed class CodexWindowTracker : IDisposable
         Hook(WindowsNative.EventObjectLocationChange);
         Hook(WindowsNative.EventSystemMinimizeStart);
         Hook(WindowsNative.EventSystemMinimizeEnd);
+        _discoveryTimer.Start();
         DiscoverTarget();
     }
 
@@ -108,11 +115,10 @@ public sealed class CodexWindowTracker : IDisposable
             return;
         }
 
-        if (found != _target)
-        {
-            _target = found;
-            _logger.Write("info", "codex_window_found", "A Codex Desktop window was detected.");
-        }
+        if (found == _target) return;
+
+        _target = found;
+        _logger.Write("info", "codex_window_found", "A Codex Desktop window was detected.");
         PublishCurrentState();
     }
 
@@ -228,6 +234,7 @@ public sealed class CodexWindowTracker : IDisposable
     {
         _disposed = true;
         _coalesceTimer.Stop();
+        _discoveryTimer.Stop();
         foreach (var hook in _hooks) WindowsNative.UnhookWinEvent(hook);
         _hooks.Clear();
     }
