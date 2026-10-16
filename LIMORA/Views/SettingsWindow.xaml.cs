@@ -27,6 +27,7 @@ public partial class SettingsWindow : Window
         AutomaticPositionBox.IsChecked = _settings.AutomaticPosition;
         ShowOverlayBox.IsChecked = _settings.ShowOverlay;
         ShowResetTimeBox.IsChecked = _settings.ShowResetTime;
+        OverlayFontSizeSlider.Value = _settings.OverlayFontSize;
         OffsetXBox.Text = _settings.OffsetX.ToString(CultureInfo.InvariantCulture);
         OffsetYBox.Text = _settings.OffsetY.ToString(CultureInfo.InvariantCulture);
         RefreshIntervalBox.Text = _settings.RefreshIntervalSeconds.ToString(CultureInfo.InvariantCulture);
@@ -45,6 +46,12 @@ public partial class SettingsWindow : Window
     }
 
     public event Action<AppSettings>? SettingsSaved;
+
+    private void OnOverlayFontSizeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (OverlayFontSizeValue is not null)
+            OverlayFontSizeValue.Text = Math.Round(e.NewValue).ToString(CultureInfo.InvariantCulture);
+    }
 
     private void SetManualFieldsEnabled(bool enabled)
     {
@@ -94,6 +101,7 @@ public partial class SettingsWindow : Window
         _settings.AutomaticPosition = AutomaticPositionBox.IsChecked == true;
         _settings.ShowOverlay = ShowOverlayBox.IsChecked == true;
         _settings.ShowResetTime = ShowResetTimeBox.IsChecked == true;
+        _settings.OverlayFontSize = Math.Round(OverlayFontSizeSlider.Value);
         _settings.OffsetX = offsetX;
         _settings.OffsetY = offsetY;
         _settings.RefreshIntervalSeconds = refresh;
@@ -114,6 +122,7 @@ public partial class SettingsWindow : Window
         AutomaticPosition = settings.AutomaticPosition,
         ShowOverlay = settings.ShowOverlay,
         ShowResetTime = settings.ShowResetTime,
+        OverlayFontSize = settings.OverlayFontSize,
         OffsetX = settings.OffsetX,
         OffsetY = settings.OffsetY,
         RefreshIntervalSeconds = settings.RefreshIntervalSeconds,

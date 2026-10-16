@@ -235,6 +235,16 @@
               <TextBlock Text="Mode" Style="{StaticResource FieldLabelStyle}"/>
               <ComboBox x:Name="DisplayModeBox" Grid.Column="1"/>
             </Grid>
+            <Grid Margin="0,8,0,0">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <TextBlock Text="Text size (DIP)" Style="{StaticResource FieldLabelStyle}"/>
+              <Grid Grid.Column="1">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions>
+                <Slider x:Name="OverlayFontSizeSlider" Minimum="12" Maximum="24" TickFrequency="1"
+                        IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="OnOverlayFontSizeChanged"/>
+                <TextBlock x:Name="OverlayFontSizeValue" Grid.Column="1" HorizontalAlignment="Right"/>
+              </Grid>
+            </Grid>
             <CheckBox x:Name="ShowOverlayBox" Content="Show overlay beside Codex" Margin="0,12,0,0"/>
             <CheckBox x:Name="ShowResetTimeBox" Content="Show reset countdown in Detailed mode"/>
           </StackPanel>

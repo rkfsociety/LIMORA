@@ -142,7 +142,7 @@ public sealed class AppServices : IDisposable
     public void SetDisplayMode(DisplayMode mode)
     {
         Settings.DisplayMode = mode;
-        _viewModel.UpdateDisplayMode();
+        _viewModel.UpdateSettings(Settings);
         SaveSettings();
     }
 
@@ -287,7 +287,7 @@ public sealed class AppServices : IDisposable
     {
         Settings = settings;
         SaveSettings();
-        _viewModel.UpdateDisplayMode();
+        _viewModel.UpdateSettings(Settings);
         _refreshTimer.Interval = TimeSpan.FromSeconds(Settings.RefreshIntervalSeconds);
         _positionRevision++;
         if (_latestState is { IsMinimized: false } state)

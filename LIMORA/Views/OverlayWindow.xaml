@@ -8,7 +8,7 @@
           Background="{StaticResource PanelBrush}" BorderThickness="1"
           BorderBrush="{Binding CalibrationAccent}">
     <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
-               FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12" FontWeight="SemiBold"
+               FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="{Binding OverlayFontSize}" FontWeight="SemiBold"
                TextOptions.TextRenderingMode="ClearType" TextOptions.TextFormattingMode="Display"
                TextWrapping="NoWrap" ToolTip="{Binding Tooltip}" />
   </Border>

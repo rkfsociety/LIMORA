@@ -9,7 +9,7 @@ namespace LIMORA.ViewModels;
 
 public sealed class OverlayViewModel : INotifyPropertyChanged
 {
-    private readonly AppSettings _settings;
+    private AppSettings _settings;
     private LimitSnapshot? _snapshot;
     private bool _codexOnline;
     private bool _calibrating;
@@ -21,6 +21,7 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public string Text { get => _text; private set => Set(ref _text, value); }
+    public double OverlayFontSize => _settings.OverlayFontSize;
     public Brush Foreground { get => _foreground; private set => Set(ref _foreground, value); }
     public string Tooltip { get => _tooltip; private set => Set(ref _tooltip, value); }
     public bool IsCalibrating { get => _calibrating; set { if (Set(ref _calibrating, value)) OnPropertyChanged(nameof(CalibrationAccent)); } }
@@ -39,7 +40,12 @@ public sealed class OverlayViewModel : INotifyPropertyChanged
         Rebuild();
     }
 
-    public void UpdateDisplayMode() => Rebuild();
+    public void UpdateSettings(AppSettings settings)
+    {
+        _settings = settings;
+        OnPropertyChanged(nameof(OverlayFontSize));
+        Rebuild();
+    }
     public void RefreshCountdowns() => Rebuild();
 
     private void Rebuild()

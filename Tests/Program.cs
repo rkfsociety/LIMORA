@@ -18,6 +18,7 @@ var tests = new (string Name, Action Run)[]
     ("unavailable snapshot is restored when Codex returns online", RestoresOnlineStateAfterUnavailableSnapshot),
     ("missing Codex CLI reports unavailable limits", MissingCodexCliReportsUnavailable),
     ("round-trips settings", RoundTripsSettings),
+    ("applies overlay font size settings", AppliesOverlayFontSizeSettings),
     ("positions relative to the Codex window", PositionsRelativeToWindow),
     ("positions above the detected composer", PositionsByComposer),
     ("clamps the overlay inside narrow windows", ClampsNarrowWindow)
@@ -100,6 +101,7 @@ static void RoundTripsSettings()
         RefreshIntervalSeconds = 60,
         StartWithWindows = true,
         ShowResetTime = false,
+        OverlayFontSize = 20,
         WarningThreshold = 55,
         CriticalThreshold = 18
     };
@@ -113,6 +115,17 @@ static void RoundTripsSettings()
     Equal(settings.RefreshIntervalSeconds, roundTrip.RefreshIntervalSeconds);
     Equal(settings.StartWithWindows, roundTrip.StartWithWindows);
     Equal(settings.ShowResetTime, roundTrip.ShowResetTime);
+    Equal(settings.OverlayFontSize, roundTrip.OverlayFontSize);
+    var clamped = SettingsSerialization.Deserialize("""{"OverlayFontSize":99}""");
+    Equal(24d, clamped.OverlayFontSize);
+}
+
+static void AppliesOverlayFontSizeSettings()
+{
+    var viewModel = new OverlayViewModel(new AppSettings());
+    Equal(16d, viewModel.OverlayFontSize);
+    viewModel.UpdateSettings(new AppSettings { OverlayFontSize = 22 });
+    Equal(22d, viewModel.OverlayFontSize);
 }
 
 static void PositionsRelativeToWindow()
