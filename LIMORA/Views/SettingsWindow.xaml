@@ -1,7 +1,7 @@
 <Window x:Class="LIMORA.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="LIMORA settings" Width="980" Height="680"
+        Title="LIMORA settings" Icon="/LIMORA;component/Assets/limora.ico" Width="980" Height="680"
         MinWidth="860" MinHeight="660" ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
         Background="#FF18191D" Foreground="#FFF1F2F4"
