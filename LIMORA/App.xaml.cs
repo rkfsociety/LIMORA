@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
@@ -158,6 +159,8 @@ public partial class App : System.Windows.Application
             if (relaunched is null)
                 throw new InvalidOperationException("Could not start LIMORA from its AppData installation.");
 
+            TryCreateDesktopShortcut(installedPath, logger);
+
             _mutex!.ReleaseMutex();
             _ownsMutex = false;
             Shutdown();
@@ -177,6 +180,40 @@ public partial class App : System.Windows.Application
                 $"LIMORA could not copy itself to {installDirectory}. This launch will continue from its current location.",
                 "LIMORA installation", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
+        }
+    }
+
+    private static void TryCreateDesktopShortcut(string executablePath, LocalLogger logger)
+    {
+        object? shell = null;
+        object? shortcut = null;
+        try
+        {
+            var shellType = Type.GetTypeFromProgID("WScript.Shell")
+                ?? throw new InvalidOperationException("Windows Script Host is unavailable.");
+            shell = Activator.CreateInstance(shellType)
+                ?? throw new InvalidOperationException("Could not create Windows Script Host instance.");
+
+            dynamic shellObject = shell;
+            var desktopDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var shortcutPath = Path.Combine(desktopDirectory, "LIMORA.lnk");
+            shortcut = shellObject.CreateShortcut(shortcutPath);
+            dynamic shortcutObject = shortcut;
+            shortcutObject.TargetPath = executablePath;
+            shortcutObject.WorkingDirectory = Path.GetDirectoryName(executablePath)!;
+            shortcutObject.IconLocation = $"{executablePath},0";
+            shortcutObject.Description = "LIMORA";
+            shortcutObject.Save();
+            logger.Write("info", "desktop_shortcut_created", shortcutPath);
+        }
+        catch (Exception ex)
+        {
+            logger.Write("warning", "desktop_shortcut_creation_failed", ex.GetType().Name);
+        }
+        finally
+        {
+            if (shortcut is not null && Marshal.IsComObject(shortcut)) Marshal.FinalReleaseComObject(shortcut);
+            if (shell is not null && Marshal.IsComObject(shell)) Marshal.FinalReleaseComObject(shell);
         }
     }
 
