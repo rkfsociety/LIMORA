@@ -1,4 +1,4 @@
-name: Windows build
+name: Windows build and release
 
 on:
   push:
@@ -12,10 +12,64 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  release_check:
+    name: Check whether a release is needed
+    runs-on: ubuntu-latest
+    outputs:
+      release_needed: ${{ steps.version.outputs.release_needed }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      latest_tag: ${{ steps.version.outputs.latest_tag }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Compare project version with latest release
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        shell: bash
+        run: |
+          if [[ "$EVENT_NAME" != "push" || "$REF" != "refs/heads/main" ]]; then
+            echo "release_needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          version="$(python3 - <<'PY'
+          import re
+          import sys
+          import xml.etree.ElementTree as ET
+
+          version = ET.parse("LIMORA/LIMORA.csproj").findtext(".//Version")
+          if not version or not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              sys.exit("LIMORA.csproj Version must use stable major.minor.patch format.")
+          print(version)
+          PY
+          )"
+          tag="v$version"
+          latest_tag="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1 \
+            --exclude-drafts --exclude-pre-releases --json tagName --jq '.[0].tagName // ""')"
+
+          if [[ "$tag" == "$latest_tag" ]]; then
+            echo "Version $version already matches the latest release; skipping build and release."
+            echo "release_needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version $version differs from latest release ${latest_tag:-<none>}; build and release are required."
+            echo "release_needed=true" >> "$GITHUB_OUTPUT"
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    if: github.event_name != 'push' || needs.release_check.outputs.release_needed == 'true'
+    needs: release_check
     runs-on: windows-latest
 
     steps:
@@ -38,3 +92,78 @@ jobs:
           path: dist/LIMORA.exe
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish versioned release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release_check.outputs.release_needed == 'true'
+    needs: [release_check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository and tags
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Create the release tag
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ needs.release_check.outputs.tag }}
+        shell: bash
+        run: |
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            tag_sha="$(git rev-parse "$RELEASE_TAG^{commit}")"
+            if [[ "$tag_sha" != "$RELEASE_SHA" ]]; then
+              echo "Tag $RELEASE_TAG already points to a different commit." >&2
+              exit 1
+            fi
+          else
+            git tag "$RELEASE_TAG" "$RELEASE_SHA"
+            git push origin "$RELEASE_TAG"
+          fi
+
+      - name: Download the tested Windows executable
+        uses: actions/download-artifact@v8
+        with:
+          name: LIMORA-win-x64
+          path: dist
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release_check.outputs.tag }}
+          NOTES_START_TAG: ${{ needs.release_check.outputs.latest_tag }}
+        shell: bash
+        run: |
+          if [[ -n "$NOTES_START_TAG" ]]; then
+            gh release create "$RELEASE_TAG" dist/LIMORA.exe \
+              --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes \
+              --notes-start-tag "$NOTES_START_TAG" --title "LIMORA $RELEASE_TAG"
+          else
+            gh release create "$RELEASE_TAG" dist/LIMORA.exe \
+              --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes \
+              --title "LIMORA $RELEASE_TAG"
+          fi
+
+      - name: Delete previous releases and version tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release_check.outputs.tag }}
+        shell: bash
+        run: |
+          previous_releases="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 \
+            --exclude-drafts --json tagName --jq '.[].tagName')"
+          while IFS= read -r old_tag; do
+            [[ -z "$old_tag" || "$old_tag" == "$RELEASE_TAG" ]] && continue
+            gh release delete "$old_tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          done <<< "$previous_releases"
+
+          remote_tags="$(git ls-remote --tags --refs origin)"
+          while IFS= read -r old_tag; do
+            [[ "$old_tag" == "$RELEASE_TAG" ]] && continue
+            if [[ "$old_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              git push origin --delete "$old_tag"
+            fi
+          done < <(awk '{ sub("refs/tags/", "", $2); print $2 }' <<< "$remote_tags")
