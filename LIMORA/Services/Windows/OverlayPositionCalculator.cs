@@ -19,7 +19,7 @@ public static class OverlayPositionCalculator
         }
         else
         {
-            var anchor = CalculateAnchorPosition(window, overlay, settings.Anchor);
+            var anchor = CalculateAnchorPosition(window, overlay, settings.Anchor, composer);
             x = anchor.X;
             x += (int)Math.Round(settings.OffsetX * scale);
             y = anchor.Y + (int)Math.Round(settings.OffsetY * scale);
@@ -30,8 +30,17 @@ public static class OverlayPositionCalculator
         return new Point(x, y);
     }
 
-    public static Point CalculateAnchorPosition(Rectangle window, Size overlay, OverlayAnchor anchor)
+    public static Point CalculateAnchorPosition(Rectangle window, Size overlay, OverlayAnchor anchor, Rectangle? composer = null)
     {
+        if (composer is { } found)
+        {
+            var relativeX = anchor == OverlayAnchor.BottomLeft
+                ? found.Left - overlay.Width - 8
+                : found.Right + 8;
+            var relativeY = found.Top + (found.Height - overlay.Height) / 2;
+            return new Point(relativeX, relativeY);
+        }
+
         var x = anchor switch
         {
             OverlayAnchor.BottomLeft => window.Left + 18,

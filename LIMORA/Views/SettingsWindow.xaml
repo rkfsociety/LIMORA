@@ -255,8 +255,8 @@
           <StackPanel>
             <TextBlock Text="Position" Style="{StaticResource SectionTitleStyle}"/>
             <RadioButton x:Name="AutomaticPositionRadio" GroupName="OverlayPosition" Content="Automatically beside the composer" Margin="0,0,0,5"/>
-            <RadioButton x:Name="LeftPositionRadio" GroupName="OverlayPosition" Content="Left side of the Codex window" Margin="0,0,0,5"/>
-            <RadioButton x:Name="RightPositionRadio" GroupName="OverlayPosition" Content="Right side of the Codex window" Margin="0,0,0,8"/>
+            <RadioButton x:Name="LeftPositionRadio" GroupName="OverlayPosition" Content="Left of the composer" Margin="0,0,0,5"/>
+            <RadioButton x:Name="RightPositionRadio" GroupName="OverlayPosition" Content="Right of the composer" Margin="0,0,0,8"/>
             <Grid Margin="0,10,0,0">
               <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
               <TextBlock Text="Offset X (DIP)" Style="{StaticResource FieldLabelStyle}"/>

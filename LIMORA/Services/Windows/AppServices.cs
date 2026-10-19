@@ -129,7 +129,7 @@ public sealed class AppServices : IDisposable
         else _overlay.Hide();
         Position(state, GetComposerBounds(state));
 
-        if (geometryChanged && Settings.AutomaticPosition)
+        if (geometryChanged)
         {
             _ = SearchForComposerAsync(state, _positionRevision);
         }
@@ -160,10 +160,27 @@ public sealed class AppServices : IDisposable
 
     public void SetAnchor(OverlayAnchor anchor)
     {
+        if (Settings.AutomaticPosition)
+        {
+            Settings.OffsetX = 0;
+            Settings.OffsetY = 0;
+        }
+        if (_composerRelative is null)
+        {
+            _composerRetryTimer.Stop();
+            _composerRetries = 0;
+            _composerSearchCompleted = false;
+            _positionRevision++;
+        }
         Settings.Anchor = anchor;
         Settings.AutomaticPosition = false;
         SaveSettings();
-        if (_latestState is { IsMinimized: false } state) Position(state, null);
+        if (_latestState is { IsMinimized: false } state)
+        {
+            Position(state, GetComposerBounds(state));
+            if (_composerRelative is null && !_composerSearchCompleted)
+                _ = SearchForComposerAsync(state, _positionRevision);
+        }
     }
 
     public void SetAutomaticPosition()
@@ -267,13 +284,16 @@ public sealed class AppServices : IDisposable
         var scale = state.Dpi / 96d;
         var width = _overlay.ActualWidth * scale;
         var height = _overlay.ActualHeight * scale;
-        Settings.Anchor = screenLeft + width / 2 < state.Bounds.Left + state.Bounds.Width / 2
+        var composer = GetComposerBounds(state);
+        var placementReference = composer ?? state.Bounds;
+        Settings.Anchor = screenLeft + width / 2 < placementReference.Left + placementReference.Width / 2
             ? OverlayAnchor.BottomLeft
             : OverlayAnchor.BottomRight;
         var anchor = OverlayPositionCalculator.CalculateAnchorPosition(
             state.Bounds,
             new System.Drawing.Size((int)Math.Ceiling(width), (int)Math.Ceiling(height)),
-            Settings.Anchor);
+            Settings.Anchor,
+            composer);
         Settings.OffsetX = (screenLeft - anchor.X) / scale;
         Settings.OffsetY = (screenTop - anchor.Y) / scale;
         Settings.AutomaticPosition = false;
@@ -307,7 +327,13 @@ public sealed class AppServices : IDisposable
         {
             if (Settings.ShowOverlay) _overlay.Show(); else _overlay.Hide();
             Position(state, GetComposerBounds(state));
-            if (Settings.AutomaticPosition) _ = SearchForComposerAsync(state, _positionRevision);
+            if (_composerRelative is null)
+            {
+                _composerRetryTimer.Stop();
+                _composerRetries = 0;
+                _composerSearchCompleted = false;
+                _ = SearchForComposerAsync(state, _positionRevision);
+            }
         }
     }
 
@@ -365,7 +391,7 @@ public sealed class AppServices : IDisposable
 
     private async Task SearchForComposerAsync(TargetWindowState state, long revision)
     {
-        if (!IsTargetVisible || !Settings.AutomaticPosition) return;
+        if (!IsTargetVisible) return;
         _composerRetries++;
         var bounds = await _tracker.FindComposerBoundsAsync(state.Handle, state.Bounds, CancellationToken.None);
         if (_disposed || revision != _positionRevision || _latestState is not { IsMinimized: false } current || current.Handle != state.Handle)

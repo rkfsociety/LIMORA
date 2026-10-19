@@ -15,11 +15,13 @@ public partial class SettingsWindow : Window
     private const int DwmwaTextColor = 36;
 
     private readonly AppSettings _settings;
+    private bool _manualOffsetsInitialized;
 
     public SettingsWindow(AppSettings settings)
     {
         InitializeComponent();
         _settings = Copy(settings);
+        _manualOffsetsInitialized = !_settings.AutomaticPosition;
         DisplayModeBox.ItemsSource = Enum.GetValues<DisplayMode>();
         DisplayModeBox.SelectedItem = _settings.DisplayMode;
         AutomaticPositionRadio.IsChecked = _settings.AutomaticPosition;
@@ -58,6 +60,12 @@ public partial class SettingsWindow : Window
 
     private void SetManualFieldsEnabled(bool enabled)
     {
+        if (enabled && !_manualOffsetsInitialized)
+        {
+            OffsetXBox.Text = "0";
+            OffsetYBox.Text = "0";
+            _manualOffsetsInitialized = true;
+        }
         OffsetXBox.IsEnabled = enabled;
         OffsetYBox.IsEnabled = enabled;
     }
