@@ -19,18 +19,26 @@ public static class OverlayPositionCalculator
         }
         else
         {
-            x = settings.Anchor switch
-            {
-                OverlayAnchor.BottomLeft => window.Left + 18,
-                OverlayAnchor.BottomRight => window.Right - overlay.Width - 18,
-                _ => window.Left + (window.Width - overlay.Width) / 2
-            };
+            var anchor = CalculateAnchorPosition(window, overlay, settings.Anchor);
+            x = anchor.X;
             x += (int)Math.Round(settings.OffsetX * scale);
-            y = window.Bottom - overlay.Height + (int)Math.Round(settings.OffsetY * scale);
+            y = anchor.Y + (int)Math.Round(settings.OffsetY * scale);
         }
 
         x = Math.Clamp(x, window.Left + 4, Math.Max(window.Left + 4, window.Right - overlay.Width - 4));
         y = Math.Clamp(y, window.Top + 4, Math.Max(window.Top + 4, window.Bottom - overlay.Height - 4));
+        return new Point(x, y);
+    }
+
+    public static Point CalculateAnchorPosition(Rectangle window, Size overlay, OverlayAnchor anchor)
+    {
+        var x = anchor switch
+        {
+            OverlayAnchor.BottomLeft => window.Left + 18,
+            OverlayAnchor.BottomRight => window.Right - overlay.Width - 18,
+            _ => window.Left + (window.Width - overlay.Width) / 2
+        };
+        var y = window.Bottom - overlay.Height;
         return new Point(x, y);
     }
 }

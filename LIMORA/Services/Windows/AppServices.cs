@@ -267,14 +267,15 @@ public sealed class AppServices : IDisposable
         var scale = state.Dpi / 96d;
         var width = _overlay.ActualWidth * scale;
         var height = _overlay.ActualHeight * scale;
-        var baseLeft = Settings.Anchor switch
-        {
-            OverlayAnchor.BottomLeft => state.Bounds.Left + 18,
-            OverlayAnchor.BottomRight => state.Bounds.Right - width - 18,
-            _ => state.Bounds.Left + (state.Bounds.Width - width) / 2
-        };
-        Settings.OffsetX = (screenLeft - baseLeft) / scale;
-        Settings.OffsetY = (screenTop - (state.Bounds.Bottom - height)) / scale;
+        Settings.Anchor = screenLeft + width / 2 < state.Bounds.Left + state.Bounds.Width / 2
+            ? OverlayAnchor.BottomLeft
+            : OverlayAnchor.BottomRight;
+        var anchor = OverlayPositionCalculator.CalculateAnchorPosition(
+            state.Bounds,
+            new System.Drawing.Size((int)Math.Ceiling(width), (int)Math.Ceiling(height)),
+            Settings.Anchor);
+        Settings.OffsetX = (screenLeft - anchor.X) / scale;
+        Settings.OffsetY = (screenTop - anchor.Y) / scale;
         Settings.AutomaticPosition = false;
         SaveSettings();
         EndCalibration();

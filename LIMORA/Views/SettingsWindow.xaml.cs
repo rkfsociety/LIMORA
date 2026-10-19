@@ -21,10 +21,12 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         _settings = Copy(settings);
         DisplayModeBox.ItemsSource = Enum.GetValues<DisplayMode>();
-        AnchorBox.ItemsSource = Enum.GetValues<OverlayAnchor>();
         DisplayModeBox.SelectedItem = _settings.DisplayMode;
-        AnchorBox.SelectedItem = _settings.Anchor;
-        AutomaticPositionBox.IsChecked = _settings.AutomaticPosition;
+        AutomaticPositionRadio.IsChecked = _settings.AutomaticPosition;
+        LeftPositionRadio.IsChecked = !_settings.AutomaticPosition &&
+                                      (_settings.Anchor == OverlayAnchor.BottomLeft ||
+                                       _settings.Anchor == OverlayAnchor.BottomCenter && _settings.OffsetX < 0);
+        RightPositionRadio.IsChecked = !_settings.AutomaticPosition && LeftPositionRadio.IsChecked != true;
         ShowOverlayBox.IsChecked = _settings.ShowOverlay;
         ShowResetTimeBox.IsChecked = _settings.ShowResetTime;
         OverlayFontSizeSlider.Value = _settings.OverlayFontSize;
@@ -34,8 +36,9 @@ public partial class SettingsWindow : Window
         WarningThresholdBox.Text = _settings.WarningThreshold.ToString(CultureInfo.InvariantCulture);
         CriticalThresholdBox.Text = _settings.CriticalThreshold.ToString(CultureInfo.InvariantCulture);
         StartWithWindowsBox.IsChecked = _settings.StartWithWindows;
-        AutomaticPositionBox.Checked += (_, _) => SetManualFieldsEnabled(false);
-        AutomaticPositionBox.Unchecked += (_, _) => SetManualFieldsEnabled(true);
+        AutomaticPositionRadio.Checked += (_, _) => SetManualFieldsEnabled(false);
+        LeftPositionRadio.Checked += (_, _) => SetManualFieldsEnabled(true);
+        RightPositionRadio.Checked += (_, _) => SetManualFieldsEnabled(true);
         SetManualFieldsEnabled(!_settings.AutomaticPosition);
     }
 
@@ -55,7 +58,6 @@ public partial class SettingsWindow : Window
 
     private void SetManualFieldsEnabled(bool enabled)
     {
-        AnchorBox.IsEnabled = enabled;
         OffsetXBox.IsEnabled = enabled;
         OffsetYBox.IsEnabled = enabled;
     }
@@ -97,8 +99,9 @@ public partial class SettingsWindow : Window
         }
 
         _settings.DisplayMode = DisplayModeBox.SelectedItem is DisplayMode mode ? mode : DisplayMode.Compact;
-        _settings.Anchor = AnchorBox.SelectedItem is OverlayAnchor anchor ? anchor : OverlayAnchor.BottomCenter;
-        _settings.AutomaticPosition = AutomaticPositionBox.IsChecked == true;
+        _settings.AutomaticPosition = AutomaticPositionRadio.IsChecked == true;
+        if (LeftPositionRadio.IsChecked == true) _settings.Anchor = OverlayAnchor.BottomLeft;
+        if (RightPositionRadio.IsChecked == true) _settings.Anchor = OverlayAnchor.BottomRight;
         _settings.ShowOverlay = ShowOverlayBox.IsChecked == true;
         _settings.ShowResetTime = ShowResetTimeBox.IsChecked == true;
         _settings.OverlayFontSize = Math.Round(OverlayFontSizeSlider.Value);
