@@ -34,14 +34,26 @@ public sealed class TrayService : IDisposable
         }
 
         var positionMenu = new Forms.ToolStripMenuItem("Position");
-        _automaticPositionItem = new Forms.ToolStripMenuItem("Automatic") { CheckOnClick = true };
-        _automaticPositionItem.Click += (_, _) => _services.SetAutomaticPosition();
+        _automaticPositionItem = new Forms.ToolStripMenuItem("Automatic");
+        _automaticPositionItem.Click += (_, _) =>
+        {
+            _services.SetAutomaticPosition();
+            SyncPositionMenuState();
+        };
         positionMenu.DropDownItems.Add(_automaticPositionItem);
         positionMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
-        foreach (var anchor in Enum.GetValues<OverlayAnchor>())
+        foreach (var (anchor, label) in new[]
+                 {
+                     (OverlayAnchor.BottomLeft, "Left"),
+                     (OverlayAnchor.BottomRight, "Right")
+                 })
         {
-            var item = new Forms.ToolStripMenuItem(anchor.ToString()) { CheckOnClick = true };
-            item.Click += (_, _) => _services.SetAnchor(anchor);
+            var item = new Forms.ToolStripMenuItem(label);
+            item.Click += (_, _) =>
+            {
+                _services.SetAnchor(anchor);
+                SyncPositionMenuState();
+            };
             _anchorItems[anchor] = item;
             positionMenu.DropDownItems.Add(item);
         }
@@ -97,12 +109,24 @@ public sealed class TrayService : IDisposable
         _startWithWindowsItem.Checked = _services.Settings.StartWithWindows;
         _calibrateItem.Checked = _services.IsCalibrating;
         _calibrateItem.Text = _services.IsCalibrating ? "Finish calibration" : "Calibrate position";
-        _automaticPositionItem.Checked = _services.Settings.AutomaticPosition;
+        SyncPositionMenuState();
         foreach (var pair in _displayItems) pair.Value.Checked = pair.Key == _services.Settings.DisplayMode;
+    }
+
+    private void SyncPositionMenuState()
+    {
+        var settings = _services.Settings;
+        _automaticPositionItem.Checked = settings.AutomaticPosition;
+        var anchor = settings.Anchor switch
+        {
+            OverlayAnchor.BottomLeft => OverlayAnchor.BottomLeft,
+            OverlayAnchor.BottomRight => OverlayAnchor.BottomRight,
+            _ => settings.OffsetX < 0 ? OverlayAnchor.BottomLeft : OverlayAnchor.BottomRight
+        };
         foreach (var pair in _anchorItems)
         {
-            pair.Value.Checked = !_services.Settings.AutomaticPosition && pair.Key == _services.Settings.Anchor;
-            pair.Value.Enabled = !_services.Settings.AutomaticPosition;
+            pair.Value.Checked = !settings.AutomaticPosition && pair.Key == anchor;
+            pair.Value.Enabled = true;
         }
     }
 
